@@ -13,7 +13,8 @@
 #include <functional>
 #include <iostream>
 #include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
+#include <boost/beast.hpp>
+#include <boost/beast/ssl.hpp>
 
 using boost::asio::ip::tcp;
 using std::placeholders::_1;
@@ -26,12 +27,10 @@ class client
 public:
     client(boost::asio::io_context& io_context,
         boost::asio::ssl::context& context,
-        const tcp::resolver::results_type& endpoints)
-        : socket_(io_context, context)
+        const tcp::resolver::results_type& endpoints, std::string host)
+        : m_stream(io_context, context), m_host(host)
     {
-        socket_.set_verify_mode(boost::asio::ssl::verify_peer);
-        socket_.set_verify_callback(
-            std::bind(&client::verify_certificate, this, _1, _2));
+        m_stream.set_verify_mode(boost::asio::ssl::verify_none);
 
         connect(endpoints);
     }
@@ -58,9 +57,9 @@ private:
 
     void connect(const tcp::resolver::results_type& endpoints)
     {
-        boost::asio::async_connect(socket_.lowest_layer(), endpoints,
+        boost::beast::get_lowest_layer(m_stream).async_connect(endpoints, 
             [this](const boost::system::error_code& error,
-                const tcp::endpoint& /*endpoint*/)
+            const tcp::endpoint& /*endpoint*/)
             {
                 if (!error)
                 {
@@ -75,7 +74,7 @@ private:
 
     void handshake()
     {
-        socket_.async_handshake(boost::asio::ssl::stream_base::client,
+        m_stream.async_handshake(boost::asio::ssl::stream_base::client,
             [this](const boost::system::error_code& error)
             {
                 if (!error)
@@ -91,12 +90,14 @@ private:
 
     void send_request()
     {
-        std::cout << "Enter message: ";
-        std::cin.getline(request_, max_length);
-        size_t request_length = std::strlen(request_);
+        boost::beast::http::request<boost::beast::http::string_body> req{ boost::beast::http::verb::get, "/api/v3/trades", 11 };
+        req.set(boost::beast::http::field::host, m_host);
+        req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        boost::beast::http::async_write(m_stream, req);
 
         boost::asio::async_write(socket_,
-            boost::asio::buffer(request_, request_length),
+            boost::asio::buffer(req., req.size()),
             [this](const boost::system::error_code& error, std::size_t length)
             {
                 if (!error)
@@ -129,37 +130,8 @@ private:
             });
     }
 
-    boost::asio::ssl::stream<tcp::socket> socket_;
+    boost::beast::ssl_stream<boost::beast::tcp_stream> m_stream;
+    std::string m_host;
     char request_[max_length];
     char reply_[max_length];
 };
-
-int main(int argc, char* argv[])
-{
-    try
-    {
-        if (argc != 3)
-        {
-            std::cerr << "Usage: client <host> <port>\n";
-            return 1;
-        }
-
-        boost::asio::io_context io_context;
-
-        tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve(argv[1], argv[2]);
-
-        boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
-        ctx.load_verify_file("ca.pem");
-
-        client c(io_context, ctx, endpoints);
-
-        io_context.run();
-    }
-    catch (std::exception& e)
-    {
-        std::cerr << "Exception: " << e.what() << "\n";
-    }
-
-    return 0;
-}

@@ -17,4 +17,5 @@ add_subdirectory ("FundingTraidingBot")
 add_subdirectory ("FundingTraidingApp")
 add_subdirectory ("Binance")
 
-target_link_libraries(FundingTraidingBot PRIVATE Boost::asio Boost::system)
+target_link_libraries(FundingTraidingApp PRIVATE Binance)
+target_include_directories(FundingTraidingApp PRIVATE "Binance")

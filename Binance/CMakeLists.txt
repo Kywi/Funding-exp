@@ -12,5 +12,6 @@ target_include_directories(Binance
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-find_package(Boost CONFIG REQUIRED COMPONENTS asio system)
-target_link_libraries(Binance PRIVATE Boost::asio Boost::system)
+find_package(Boost CONFIG REQUIRED COMPONENTS asio system beast)
+find_package(OpenSSL REQUIRED)
+target_link_libraries(Binance PUBLIC Boost::asio Boost::beast Boost::system OpenSSL::SSL OpenSSL::Crypto)

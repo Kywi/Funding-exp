@@ -3,6 +3,6 @@
 #
 
 # Add source to this project's executable.
-add_executable (FundingTraidingBot "FundingTraidingBot.cpp" "FundingTraidingBot.h")
+
 
 # TODO: Add tests and install targets if needed.

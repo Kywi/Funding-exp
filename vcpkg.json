@@ -5,7 +5,9 @@
     {
       "name": "boost-asio",
       "features": [ "ssl" ]
-    }
+    },
+    "boost-beast",
+    "openssl"
   ],
   "builtin-baseline": "e140b1fde236eb682b0d47f905e65008a191800f"
 }
